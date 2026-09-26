@@ -1,23 +1,25 @@
 const dotenv = require('dotenv');
-const mongoose = require('mongoose');
 
-dotenv.config({ path: './config.env' });
+// Load config.env in local environment only
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config({ path: './config.env' });
+}
 const app = require('./app');
-
-const DB = process.env.DATABASE.replace('<db_password>', process.env.DATABASE_PASSWORD);
-
-mongoose.connect(DB).then(() => {
-  console.log('DB connected Successfully!');
-});
+const connectDB = require('./db');
 
 const port = 3000;
-const server = app.listen(port, () => {
-  console.log(`App running on port ${port}`);
-});
+// Listen only when running locally (Vercel automatically sets process.env.VERCEL)
+if (!process.env.VERCEL) {
+  connectDB().then(() => {
+    const server = app.listen(3000, () => {
+      console.log(`App running on port ${port}...`);
+    });
 
-process.on('unhandledRejection', (err) => {
-  console.log(err.name, err.message);
-  server.close(() => {
-    process.exit(1);
+    process.on('unhandledRejection', (err) => {
+      console.log(err.name, err.message);
+      server.close(() => {
+        process.exit(1);
+      });
+    });
   });
-});
+}

@@ -15,10 +15,21 @@ const bookingRouter = require('./routes/BookingRouters');
 
 const AppError = require('./utils/appError');
 const ErrorController = require('./controllers/ErrorController');
+const connectDB = require('./db');
 
 const app = express();
 
 app.set('query parser', 'extended');
+
+// 2. Ensure Database Connection before handling any request
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 app.use(helmet());
 
