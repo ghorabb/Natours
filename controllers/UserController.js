@@ -70,11 +70,17 @@ exports.updateMe = asyncHandler(async (req, res, next) => {
   }
 
   // Only allow name and email
-  const { name, email } = req.body;
-  const filteredObj = { name, email };
-  if (req.file) {
-    filteredObj.photo = req.file.filename;
+  const filteredObj = {};
+  if (req.body.name) {
+    filteredObj.name = req.body.name;
   }
+  if (req.body.email) {
+    filteredObj.email = req.body.email;
+  }
+  if (req.body.photo) {
+    filteredObj.photo = req.body.photo;
+  }
+
   const updatedUser = await User.findByIdAndUpdate(req.user._id, filteredObj, { new: true, runValidators: true });
 
   res.status(200).json({
