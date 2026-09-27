@@ -28,9 +28,10 @@ exports.resizePhoto = asyncHandler(async (req, res, next) => {
 
   const buffer = await sharp(req.file.buffer).resize(500, 500).toFormat('jpeg').jpeg({ quality: 90 }).toBuffer();
 
-  const result = await uploadToCloudinary(buffer, 'natours/users', `user-${req.user._id}-${Date.now()}`);
+  const result = await uploadToCloudinary(buffer, 'natours/users', `user-${req.user._id}`);
 
   req.body.photo = result.secure_url;
+  req.body.photoPublicId = result.public_id;
 
   next();
 });

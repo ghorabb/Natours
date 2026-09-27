@@ -32,41 +32,49 @@ exports.resizeTourImages = asyncHandler(async (req, res, next) => {
     return next();
   }
 
+  // Cover image
   if (req.files.imageCover) {
     const coverBuffer = await sharp(req.files.imageCover[0].buffer)
-      .resize(2000, 1333)
+      .resize(2000, 1333, {
+        fit: 'cover',
+      })
       .toFormat('jpeg')
       .jpeg({ quality: 90 })
       .toBuffer();
 
-    const coverResult = await uploadToCloudinary(
-      coverBuffer,
-      'natours/tours',
-      `tour-${req.params.id || 'new'}-${Date.now()}-cover`,
-    );
+    const coverResult = await uploadToCloudinary(coverBuffer, 'natours/tours', `tour-${req.params.id || 'new'}-cover`);
 
     req.body.imageCover = coverResult.secure_url;
+    req.body.imageCoverPublicId = coverResult.public_id;
   }
 
+  // Other tour images
   if (req.files.images) {
-    req.body.images = await Promise.all(
+    const uploadedImages = await Promise.all(
       req.files.images.map(async (file, i) => {
-        const buffer = await sharp(file.buffer).resize(2000, 1333).toFormat('jpeg').jpeg({ quality: 90 }).toBuffer();
+        const buffer = await sharp(file.buffer)
+          .resize(2000, 1333, {
+            fit: 'cover',
+          })
+          .toFormat('jpeg')
+          .jpeg({ quality: 90 })
+          .toBuffer();
 
-        const result = await uploadToCloudinary(
-          buffer,
-          'natours/tours',
-          `tour-${req.params.id || 'new'}-${Date.now()}-${i + 1}`,
-        );
+        const result = await uploadToCloudinary(buffer, 'natours/tours', `tour-${req.params.id || 'new'}-${i + 1}`);
 
-        return result.secure_url;
+        return {
+          url: result.secure_url,
+          publicId: result.public_id,
+        };
       }),
     );
+
+    req.body.images = uploadedImages.map((image) => image.url);
+    req.body.imagesPublicIds = uploadedImages.map((image) => image.publicId);
   }
 
   next();
 });
-
 // Alias Top Tours
 exports.aliasTopTour = (req, res, next) => {
   const params = new URLSearchParams(req.query);
