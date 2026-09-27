@@ -22,7 +22,7 @@ async function connectDB() {
 
     const opts = {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 5000, // Fail after 5s instead of hanging for 10s
+      serverSelectionTimeoutMS: 5000,
     };
 
     cached.promise = mongoose.connect(DB, opts).then(() => {

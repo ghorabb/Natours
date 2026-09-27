@@ -4,6 +4,7 @@ const Tour = require('../models/TourModel');
 const APIFeatures = require('../utils/apiFeatures');
 const AppError = require('../utils/appError');
 const asyncHandler = require('../utils/asynchandler');
+const uploadToCloudinary = require('../utils/uploadToCloudinary');
 
 const multerStorage = multer.memoryStorage();
 
@@ -27,35 +28,40 @@ exports.uploadToursImages = upload.fields([
 ]);
 
 exports.resizeTourImages = asyncHandler(async (req, res, next) => {
-  // No images uploaded
-  if (!req.files || (!req.files.imageCover && !req.files.images)) return next();
+  if (!req.files || (!req.files.imageCover && !req.files.images)) {
+    return next();
+  }
 
-  // 1) Cover image
   if (req.files.imageCover) {
-    req.body.imageCover = `tour-${req.params.id || 'new'}-${Date.now()}-cover.jpeg`;
-
-    await sharp(req.files.imageCover[0].buffer)
+    const coverBuffer = await sharp(req.files.imageCover[0].buffer)
       .resize(2000, 1333)
       .toFormat('jpeg')
       .jpeg({ quality: 90 })
-      .toFile(`public/img/tours/${req.body.imageCover}`);
+      .toBuffer();
+
+    const coverResult = await uploadToCloudinary(
+      coverBuffer,
+      'natours/tours',
+      `tour-${req.params.id || 'new'}-${Date.now()}-cover`,
+    );
+
+    req.body.imageCover = coverResult.secure_url;
   }
 
-  // 2) Other images
   if (req.files.images) {
-    req.body.images = [];
+    req.body.images = await Promise.all(
+      req.files.images.map(async (file, i) => {
+        const buffer = await sharp(file.buffer).resize(2000, 1333).toFormat('jpeg').jpeg({ quality: 90 }).toBuffer();
 
-    for (let i = 0; i < req.files.images.length; i++) {
-      const filename = `tour-${Date.now()}-${i + 1}.jpeg`;
+        const result = await uploadToCloudinary(
+          buffer,
+          'natours/tours',
+          `tour-${req.params.id || 'new'}-${Date.now()}-${i + 1}`,
+        );
 
-      await sharp(req.files.images[i].buffer)
-        .resize(2000, 1333)
-        .toFormat('jpeg')
-        .jpeg({ quality: 90 })
-        .toFile(`public/img/tours/${filename}`);
-
-      req.body.images.push(filename);
-    }
+        return result.secure_url;
+      }),
+    );
   }
 
   next();

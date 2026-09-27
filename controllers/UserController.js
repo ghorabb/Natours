@@ -3,6 +3,7 @@ const sharp = require('sharp');
 const User = require('../models/UserModel');
 const AppError = require('../utils/appError');
 const asyncHandler = require('../utils/asynchandler');
+const uploadToCloudinary = require('../utils/uploadToCloudinary');
 
 const multerStorage = multer.memoryStorage();
 
@@ -17,7 +18,7 @@ const multerFilter = (req, file, cb) => {
 const upload = multer({
   storage: multerStorage,
   fileFilter: multerFilter,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
 });
 
 exports.uploadUserPhoto = upload.single('photo');
@@ -25,13 +26,11 @@ exports.uploadUserPhoto = upload.single('photo');
 exports.resizePhoto = asyncHandler(async (req, res, next) => {
   if (!req.file) return next();
 
-  req.file.filename = `user-${req.user._id}-${Date.now()}.jpeg`;
+  const buffer = await sharp(req.file.buffer).resize(500, 500).toFormat('jpeg').jpeg({ quality: 90 }).toBuffer();
 
-  await sharp(req.file.buffer)
-    .resize(500, 500)
-    .toFormat('jpeg')
-    .jpeg({ quality: 90 })
-    .toFile(`public/img/users/${req.file.filename}`);
+  const result = await uploadToCloudinary(buffer, 'natours/users', `user-${req.user._id}-${Date.now()}`);
+
+  req.body.photo = result.secure_url;
 
   next();
 });

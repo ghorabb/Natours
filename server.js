@@ -8,7 +8,7 @@ const app = require('./app');
 const connectDB = require('./db');
 
 const port = 3000;
-// Listen only when running locally (Vercel automatically sets process.env.VERCEL)
+
 if (!process.env.VERCEL) {
   connectDB().then(() => {
     const server = app.listen(3000, () => {

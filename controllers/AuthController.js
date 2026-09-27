@@ -1,6 +1,7 @@
 const { promisify } = require('util');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+
 const User = require('../models/UserModel');
 const asyncHandler = require('../utils/asynchandler');
 const AppError = require('../utils/appError');
@@ -16,7 +17,7 @@ const signToken = (id) => {
 const createSendCookie = (res, token) => {
   res.cookie('jwt', token, {
     expires: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRES * 24 * 60 * 60 * 1000),
-    // secure: true,
+    secure: true,
     httpOnly: true,
   });
 };

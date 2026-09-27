@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const mongoSanitize = require('@exortek/express-mongo-sanitize');
+const cors = require('cors');
 const hpp = require('hpp');
 const { xss } = require('express-xss-sanitizer');
 
@@ -21,7 +22,6 @@ const app = express();
 
 app.set('query parser', 'extended');
 
-// 2. Ensure Database Connection before handling any request
 app.use(async (req, res, next) => {
   try {
     await connectDB();
@@ -30,6 +30,8 @@ app.use(async (req, res, next) => {
     next(err);
   }
 });
+
+app.use(cors());
 
 app.use(helmet());
 
@@ -54,8 +56,6 @@ app.use(
 
 app.use(morgan('dev'));
 app.use(cookieParser());
-
-app.use(express.static(`${__dirname}/public`));
 
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();
