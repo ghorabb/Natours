@@ -25,8 +25,8 @@ router
   .route('/updateMe')
   .patch(
     UserController.uploadUserPhoto,
-    UserController.updatePhoto,
     validation(userValidator.updateMe),
+    UserController.updatePhoto,
     UserController.updateMe,
   );
 

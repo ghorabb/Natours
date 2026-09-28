@@ -41,8 +41,8 @@ router
     AuthController.protect,
     AuthController.restrictTo('admin', 'lead-guide'),
     TourController.uploadToursImages,
-    uploadTourImagesToCloudinary,
     validation(TourValidator.createTour),
+    uploadTourImagesToCloudinary,
     TourController.createTour,
   );
 
@@ -53,8 +53,8 @@ router
     AuthController.protect,
     AuthController.restrictTo('admin', 'lead-guide'),
     TourController.uploadToursImages,
-    uploadTourImagesToCloudinary,
     validation(TourValidator.updateTour),
+    uploadTourImagesToCloudinary,
     TourController.updateTour,
   )
   .delete(
