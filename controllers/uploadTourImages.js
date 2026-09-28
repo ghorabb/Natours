@@ -3,72 +3,59 @@ const fs = require('fs/promises');
 const asyncHandler = require('../utils/asynchandler');
 const cloudinary = require('../utils/cloudinary');
 
-const uploadTourImagesToCloudinary = asyncHandler(async (req, res, next) => {
-  if (!req.files) return next();
+const uploadImage = async (file, publicId) => {
+  const options = {
+    folder: 'natours/tours',
+    resource_type: 'image',
+    transformation: [
+      {
+        width: 2000,
+        height: 1333,
+        crop: 'fill',
+      },
+    ],
+    quality: 'auto',
+    fetch_format: 'auto',
+  };
+
+  if (publicId) {
+    options.public_id = publicId;
+    options.overwrite = true;
+    options.invalidate = true;
+  }
+
+  try {
+    const result = await cloudinary.uploader.upload(file.path, options);
+
+    return {
+      publicId: result.public_id,
+      url: result.secure_url,
+    };
+  } finally {
+    await fs.unlink(file.path).catch(() => {});
+  }
+};
+
+exports.uploadTourImagesToCloudinary = asyncHandler(async (req, res, next) => {
+  if (!req.files || (!req.files.imageCover && !req.files.images)) {
+    return next();
+  }
 
   if (req.files.imageCover) {
     const file = req.files.imageCover[0];
 
-    try {
-      const result = await cloudinary.uploader.upload(file.path, {
-        folder: 'natours/tours',
-        public_id: `tour-${req.params.id}-cover`,
-        overwrite: true,
-        invalidate: true,
-        resource_type: 'image',
-        transformation: [
-          {
-            width: 2000,
-            height: 1333,
-            crop: 'fill',
-          },
-        ],
-        quality: 'auto',
-        fetch_format: 'auto',
-      });
+    req.body.imageCover = await uploadImage(file, req.body.imageCoverPublicId);
 
-      req.body.imageCover = {
-        publicId: result.public_id,
-        url: result.secure_url,
-      };
-    } finally {
-      await fs.unlink(file.path).catch(() => {});
-    }
+    delete req.body.imageCoverPublicId;
   }
 
   if (req.files.images) {
-    req.body.images = await Promise.all(
-      req.files.images.map(async (file, i) => {
-        try {
-          const result = await cloudinary.uploader.upload(file.path, {
-            folder: 'natours/tours',
-            public_id: `tour-${req.params.id}-${i + 1}`,
-            overwrite: true,
-            invalidate: true,
-            resource_type: 'image',
-            transformation: [
-              {
-                width: 2000,
-                height: 1333,
-                crop: 'fill',
-              },
-            ],
-            quality: 'auto',
-            fetch_format: 'auto',
-          });
+    const publicIds = req.body.imagesPublicIds || [];
 
-          return {
-            publicId: result.public_id,
-            url: result.secure_url,
-          };
-        } finally {
-          await fs.unlink(file.path).catch(() => {});
-        }
-      }),
-    );
+    req.body.images = await Promise.all(req.files.images.map((file, index) => uploadImage(file, publicIds[index])));
+
+    delete req.body.imagesPublicIds;
   }
 
   next();
 });
-
-module.exports = uploadTourImagesToCloudinary;
