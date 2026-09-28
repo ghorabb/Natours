@@ -1,37 +1,42 @@
-const multer = require('multer');
-const sharp = require('sharp');
 const User = require('../models/UserModel');
 const AppError = require('../utils/appError');
 const asyncHandler = require('../utils/asynchandler');
-const uploadToCloudinary = require('../utils/uploadToCloudinary');
+const cloudinary = require('../utils/cloudinary');
+const uploadphoto = require('../utils/uploadPhoto');
 
-const multerStorage = multer.memoryStorage();
+exports.uploadUserPhoto = uploadphoto().single('photo');
 
-const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
-    cb(null, true);
-  } else {
-    cb(new AppError('Not an image! Please upload only images', 400), false);
-  }
-};
-
-const upload = multer({
-  storage: multerStorage,
-  fileFilter: multerFilter,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-});
-
-exports.uploadUserPhoto = upload.single('photo');
-
-exports.resizePhoto = asyncHandler(async (req, res, next) => {
+exports.updatePhoto = asyncHandler(async (req, res, next) => {
   if (!req.file) return next();
 
-  const buffer = await sharp(req.file.buffer).resize(500, 500).toFormat('jpeg').jpeg({ quality: 90 }).toBuffer();
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    return next(new AppError('No User found with that ID', 404));
+  }
 
-  const result = await uploadToCloudinary(buffer, 'natours/users', `user-${req.user._id}`);
+  const result = await cloudinary.uploader.upload(req.file.path, {
+    folder: 'natours/users',
+    public_id: `user-${req.user._id}`,
 
-  req.body.photo = result.secure_url;
-  req.body.photoPublicId = result.public_id;
+    transformation: [
+      {
+        width: 500,
+        height: 500,
+        crop: 'fill',
+        gravity: 'face',
+      },
+    ],
+
+    format: 'jpg',
+    quality: 'auto',
+    fetch_format: 'auto',
+    resource_type: 'image',
+  });
+
+  req.body.photo = {
+    publicId: result.public_id,
+    url: result.secure_url,
+  };
 
   next();
 });
@@ -129,11 +134,17 @@ exports.updateUser = asyncHandler(async (req, res, next) => {
 });
 
 exports.deleteUser = asyncHandler(async (req, res, next) => {
-  const user = await User.findByIdAndDelete(req.params.id);
+  const user = await User.findById(req.params.id);
 
   if (!user) {
     return next(new AppError('No User found with that ID', 404));
   }
+
+  if (user.photo?.publicId) {
+    await cloudinary.uploader.destroy(user.photo.publicId);
+  }
+
+  await User.findByIdAndDelete(req.params.id);
 
   res.status(204).json({
     status: 'success',

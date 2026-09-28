@@ -5,6 +5,7 @@ const ReviewRouters = require('./ReviewRouters');
 const BookingRouters = require('./BookingRouters');
 const { validation } = require('../middleware/validationMiddleware');
 const TourValidator = require('../validators/tourValidator');
+const uploadTourImagesToCloudinary = require('../controllers/uploadTourImages');
 
 const router = express.Router();
 
@@ -40,7 +41,7 @@ router
     AuthController.protect,
     AuthController.restrictTo('admin', 'lead-guide'),
     TourController.uploadToursImages,
-    TourController.resizeTourImages,
+    uploadTourImagesToCloudinary,
     validation(TourValidator.createTour),
     TourController.createTour,
   );
@@ -52,7 +53,7 @@ router
     AuthController.protect,
     AuthController.restrictTo('admin', 'lead-guide'),
     TourController.uploadToursImages,
-    TourController.resizeTourImages,
+    uploadTourImagesToCloudinary,
     validation(TourValidator.updateTour),
     TourController.updateTour,
   )

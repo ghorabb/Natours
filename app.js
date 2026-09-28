@@ -68,11 +68,6 @@ app.use('/api/v1/reviews', reviewRouter);
 app.use('/api/v1/bookings', bookingRouter);
 
 app.all('/{*splat}', (req, res, next) => {
-  // res.status(404).json({
-  //   status: 'fail',
-  //   message: `can not find ${req.originalUrl} at this server`,
-  // });
-
   next(new AppError(`can not find ${req.originalUrl} at this server`, 404));
 });
 

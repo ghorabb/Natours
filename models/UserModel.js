@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const { type } = require('os');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -24,10 +25,14 @@ const userSchema = new mongoose.Schema({
     default: 'user',
   },
   photo: {
-    type: String,
-    default: 'https://res.cloudinary.com/dixp7lf2a/image/upload/v1234567890/natours/users/default.jpg',
+    publicId: {
+      type: String,
+    },
+    url: {
+      type: String,
+      default: 'https://res.cloudinary.com/dixp7lf2a/image/upload/v1234567890/natours/users/default.jpg',
+    },
   },
-
   password: {
     type: String,
     required: [true, 'Please enter your password.'],

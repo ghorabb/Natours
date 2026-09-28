@@ -1,80 +1,15 @@
-const multer = require('multer');
-const sharp = require('sharp');
 const Tour = require('../models/TourModel');
 const APIFeatures = require('../utils/apiFeatures');
 const AppError = require('../utils/appError');
 const asyncHandler = require('../utils/asynchandler');
-const uploadToCloudinary = require('../utils/uploadToCloudinary');
+const uploadphoto = require('../utils/uploadPhoto');
+const cloudinary = require('../utils/cloudinary');
 
-const multerStorage = multer.memoryStorage();
-
-const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
-    cb(null, true);
-  } else {
-    cb(new AppError('Not an image! Please upload only images', 400), false);
-  }
-};
-
-const upload = multer({
-  storage: multerStorage,
-  fileFilter: multerFilter,
-  limits: { fileSize: 10 * 1024 * 1024 },
-});
-
-exports.uploadToursImages = upload.fields([
+exports.uploadToursImages = uploadphoto().fields([
   { name: 'imageCover', maxCount: 1 },
   { name: 'images', maxCount: 3 },
 ]);
 
-exports.resizeTourImages = asyncHandler(async (req, res, next) => {
-  if (!req.files || (!req.files.imageCover && !req.files.images)) {
-    return next();
-  }
-
-  // Cover image
-  if (req.files.imageCover) {
-    const coverBuffer = await sharp(req.files.imageCover[0].buffer)
-      .resize(2000, 1333, {
-        fit: 'cover',
-      })
-      .toFormat('jpeg')
-      .jpeg({ quality: 90 })
-      .toBuffer();
-
-    const coverResult = await uploadToCloudinary(coverBuffer, 'natours/tours', `tour-${req.params.id || 'new'}-cover`);
-
-    req.body.imageCover = coverResult.secure_url;
-    req.body.imageCoverPublicId = coverResult.public_id;
-  }
-
-  // Other tour images
-  if (req.files.images) {
-    const uploadedImages = await Promise.all(
-      req.files.images.map(async (file, i) => {
-        const buffer = await sharp(file.buffer)
-          .resize(2000, 1333, {
-            fit: 'cover',
-          })
-          .toFormat('jpeg')
-          .jpeg({ quality: 90 })
-          .toBuffer();
-
-        const result = await uploadToCloudinary(buffer, 'natours/tours', `tour-${req.params.id || 'new'}-${i + 1}`);
-
-        return {
-          url: result.secure_url,
-          publicId: result.public_id,
-        };
-      }),
-    );
-
-    req.body.images = uploadedImages.map((image) => image.url);
-    req.body.imagesPublicIds = uploadedImages.map((image) => image.publicId);
-  }
-
-  next();
-});
 // Alias Top Tours
 exports.aliasTopTour = (req, res, next) => {
   const params = new URLSearchParams(req.query);
@@ -153,11 +88,25 @@ exports.updateTour = asyncHandler(async (req, res, next) => {
 
 // Delete Tour
 exports.deleteTour = asyncHandler(async (req, res, next) => {
-  const tour = await Tour.findByIdAndDelete(req.params.id);
+  const tour = await Tour.findById(req.params.id);
 
   if (!tour) {
     return next(new AppError('No Tour found with that ID', 404));
   }
+
+  // Delete cover image
+  if (tour.imageCover?.publicId) {
+    await cloudinary.uploader.destroy(tour.imageCover.publicId);
+  }
+
+  // Delete other tour images
+  if (tour.images?.length) {
+    await Promise.all(
+      tour.images.filter((image) => image.publicId).map((image) => cloudinary.uploader.destroy(image.publicId)),
+    );
+  }
+
+  await Tour.findByIdAndDelete(req.params.id);
 
   res.status(204).json({
     status: 'success',
