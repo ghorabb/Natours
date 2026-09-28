@@ -1,9 +1,13 @@
 const fs = require('fs/promises');
-
 const asyncHandler = require('../utils/asynchandler');
 const cloudinary = require('../utils/cloudinary');
 
 const uploadImage = async (file, publicId) => {
+  // Guard against missing file or path
+  if (!file || !file.path) {
+    throw new Error('No valid file path provided for Cloudinary upload.');
+  }
+
   const options = {
     folder: 'natours/tours',
     resource_type: 'image',
@@ -32,7 +36,10 @@ const uploadImage = async (file, publicId) => {
       url: result.secure_url,
     };
   } finally {
-    await fs.unlink(file.path).catch(() => {});
+    // Safely delete temp file if path exists
+    if (file.path) {
+      await fs.unlink(file.path).catch(() => {});
+    }
   }
 };
 
@@ -41,18 +48,31 @@ exports.uploadTourImagesToCloudinary = asyncHandler(async (req, res, next) => {
     return next();
   }
 
-  if (req.files.imageCover) {
+  // 1. Process Cover Image
+  if (req.files.imageCover && req.files.imageCover[0]) {
     const file = req.files.imageCover[0];
+    const coverPublicId = req.body.imageCoverPublicId || null;
 
-    req.body.imageCover = await uploadImage(file, req.body.imageCoverPublicId);
-
+    req.body.imageCover = await uploadImage(file, coverPublicId);
     delete req.body.imageCoverPublicId;
   }
 
-  if (req.files.images) {
-    const publicIds = req.body.imagesPublicIds || [];
+  // 2. Process Gallery Images
+  if (req.files.images && req.files.images.length > 0) {
+    let publicIds = req.body.imagesPublicIds || [];
 
-    req.body.images = await Promise.all(req.files.images.map((file, index) => uploadImage(file, publicIds[index])));
+    // Ensure publicIds is always an array (Multer parses single values as strings)
+    if (typeof publicIds === 'string') {
+      try {
+        publicIds = JSON.parse(publicIds);
+      } catch {
+        publicIds = [publicIds];
+      }
+    }
+
+    req.body.images = await Promise.all(
+      req.files.images.map((file, index) => uploadImage(file, Array.isArray(publicIds) ? publicIds[index] : null)),
+    );
 
     delete req.body.imagesPublicIds;
   }
