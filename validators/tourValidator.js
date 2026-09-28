@@ -24,8 +24,6 @@ exports.createTour = Joi.object({
   difficulty: Joi.string().valid('easy', 'medium', 'difficult').required(),
   summary: Joi.string().trim(),
   description: Joi.string().trim().required(),
-  imageCover: Joi.string().required(),
-  images: Joi.array().items(Joi.string()),
   startDates: Joi.array().items(
     Joi.object({
       date: Joi.date().required(),
@@ -67,8 +65,6 @@ exports.updateTour = Joi.object({
   difficulty: Joi.string().valid('easy', 'medium', 'difficult'),
   summary: Joi.string().trim(),
   description: Joi.string().trim(),
-  imageCover: Joi.string(),
-  images: Joi.array().items(Joi.string()),
   startDates: Joi.array().items(
     Joi.object({
       date: Joi.date(),
