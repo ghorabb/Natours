@@ -61,23 +61,16 @@ const tourSchema = new mongoose.Schema(
       trim: true,
     },
     imageCover: {
-      publicId: {
-        type: String,
-        required: true,
-      },
+      publicId: String,
       url: {
         type: String,
-        required: true,
+        required: [true, 'Tour must have a cover image'],
       },
     },
     images: [
       {
-        publicId: {
-          type: String,
-        },
-        url: {
-          type: String,
-        },
+        publicId: String,
+        url: String,
       },
     ],
     startDates: [
